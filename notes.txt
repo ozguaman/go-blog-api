@@ -1,0 +1,47 @@
+// slice
+todos := []string{"yatagini topla", "dislerini fircala", "evi supur"}
+
+todos = append(todos, "ders yap")
+
+for index, value := range todos {
+	fmt.Printf("%d. Görev: %s\n", index+1, value)
+}
+fmt.Println("Toplam görev sayısı:", len(todos))
+
+// map
+notlar := map[string]int{
+	"turkce":        80,
+	"matematik":     25,
+	"hayat bilgisi": 100,
+}
+fmt.Println(notlar["turkce"])
+
+// struct
+
+type Todo struct {
+	ID     int
+	Title  string
+	IsDone bool
+}
+
+func (t *Todo) Toggle() {
+	t.IsDone = !t.IsDone
+}
+
+todos := []Todo{
+		{ID: 1, Title: "Yatağını topla.", IsDone: true},
+		{ID: 2, Title: "Dişlerini fırçala.", IsDone: true},
+		{ID: 3, Title: "Evi süpür.", IsDone: false},
+	}
+
+todos[2].Toggle()
+
+for index, value := range todos {
+	var checkBox string = "[ ]"
+
+	if value.IsDone == true {
+		checkBox = "[x]"
+	}
+
+	fmt.Printf("%d-%s: %s\n", index+1, checkBox, value.Title)
+}
