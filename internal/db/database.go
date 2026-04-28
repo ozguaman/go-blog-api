@@ -1,7 +1,6 @@
 package db
 
 import (
-	"demo/internal/blog"
 	"fmt"
 	"log"
 	"os"
@@ -34,8 +33,6 @@ func Connect() {
 	if err != nil {
 		log.Fatal("Veritabanına bağlanılamadı: ", err)
 	}
-
-	database.AutoMigrate(&blog.Blog{})
 
 	fmt.Println("Veritabanı bağlantısı başarılı! Kapılar açıldı.")
 	DB = database
