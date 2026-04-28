@@ -1,4 +1,3 @@
-# Çalıştırılabilir dosyalar (Build alınca çıkanlar)
 *.exe
 *.exe~
 *.dll
@@ -6,9 +5,7 @@
 *.dylib
 bin/
 
-# Veri ve Loglar
 *.log
 .env
 
-# Docker ve Geçici Dosyalar
 .DS_Store

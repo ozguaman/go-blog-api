@@ -1,9 +1,9 @@
 package blog
 
+import "gorm.io/gorm"
+
 type Blog struct {
-	Title       string
-	Content     string
-	AuthorId    string
-	CreatedTime string
-	UpdatedTime string
+	gorm.Model
+	Title   string `json: "title"`
+	Content string `json: "content"`
 }
