@@ -2,11 +2,20 @@ package blog
 
 import (
 	"demo/internal/db"
+
+	"gorm.io/gorm"
 )
 
-func GetBlogs() ([]Blog, error) {
+func GetBlogs(limit int) ([]Blog, error) {
 	var blogs []Blog
-	result := db.DB.Find(&blogs)
+
+	tx := db.DB.Session(&gorm.Session{})
+
+	if limit > 0 {
+		tx = tx.Limit(limit)
+	}
+
+	result := tx.Find(&blogs)
 	return blogs, result.Error
 }
 

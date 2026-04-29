@@ -2,14 +2,26 @@ package blog
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+	"strconv"
 )
 
 func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
-	blogs, err := GetBlogs()
+	limit := r.URL.Query().Get("limit")
+	limitNum := 0
+
+	if limit != "" {
+		var err error
+		limitNum, err = strconv.Atoi(limit)
+		if err != nil || limitNum < 0 {
+			http.Error(w, "Limit parametresi sorunlu", http.StatusBadRequest)
+			return
+		}
+	}
+
+	blogs, err := GetBlogs(limitNum)
 	if err != nil {
-		log.Fatal("Dosyalar fetch edilirken bir sorun oldu. ", err)
+		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
