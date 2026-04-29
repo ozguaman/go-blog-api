@@ -28,6 +28,25 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(blogs)
 }
 
+func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	idNum, err := strconv.Atoi(id)
+	if err != nil || idNum < 1 {
+		http.Error(w, "Yanlış ID formatı..", http.StatusBadRequest)
+		return
+	}
+
+	blog, err := GetBlogsById(idNum)
+	if err != nil {
+		http.Error(w, "Böyle bir blog yok.", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(blog)
+}
+
 func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	var b Blog
 	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
