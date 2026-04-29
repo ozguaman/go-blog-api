@@ -4,9 +4,25 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
+
+	// pagination
+	page := r.URL.Query().Get("page")
+	pageNum := 1
+
+	if page != "" {
+		var err error
+		pageNum, err = strconv.Atoi(page)
+		if err != nil || pageNum <= 0 {
+			http.Error(w, "Page parametresi sorunlu.", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// limit
 	limit := r.URL.Query().Get("limit")
 	limitNum := 0
 
@@ -19,9 +35,19 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	blogs, err := GetBlogs(limitNum)
+	// field
+	field := r.URL.Query().Get("field")
+	if _, err := strconv.Atoi(field); err == nil {
+		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
+		return
+	}
+	arrOfField := strings.Split(field, ",")
+
+	// Response
+	blogs, err := GetBlogs(pageNum, limitNum, arrOfField)
 	if err != nil {
 		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

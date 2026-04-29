@@ -1,9 +1,16 @@
 package blog
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Blog struct {
-	gorm.Model
-	Title   string `json: "title"`
-	Content string `json: "content"`
+	ID        uint            `gorm:"primarykey" json:"id,omitempty"`
+	CreatedAt *time.Time      `json:"created_at,omitempty"`
+	UpdatedAt *time.Time      `json:"updated_at,omitempty"`
+	DeletedAt *gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	Title     string          `json:"title,omitempty"`
+	Content   string          `json:"content,omitempty"`
 }
