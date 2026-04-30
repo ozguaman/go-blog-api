@@ -35,8 +35,16 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// search
+	searchQuery := r.URL.Query().Get("search")
+	if _, err := strconv.Atoi(searchQuery); err == nil {
+		http.Error(w, "Bozuk formatta search parametresi girişi.", http.StatusBadRequest)
+		return
+	}
+
 	// field
 	field := r.URL.Query().Get("field")
+
 	if _, err := strconv.Atoi(field); err == nil {
 		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
 		return
@@ -44,7 +52,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 	arrOfField := strings.Split(field, ",")
 
 	// Response
-	blogs, err := GetBlogs(pageNum, limitNum, arrOfField)
+	blogs, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField)
 	if err != nil {
 		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
 		return

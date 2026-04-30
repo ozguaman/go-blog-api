@@ -31,9 +31,9 @@ func Connect() {
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal("Veritabanına bağlanılamadı: ", err)
+		log.Fatal(err)
 	}
 
-	fmt.Println("Veritabanı bağlantısı başarılı! Kapılar açıldı.")
+	fmt.Println("Successfully connected to database.")
 	DB = database
 }

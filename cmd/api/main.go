@@ -13,7 +13,7 @@ func main() {
 
 	err := db.DB.AutoMigrate(&blog.Blog{})
 	if err != nil {
-		log.Fatal("Tablo oluşturulurken bir sorun oluştu. ", err)
+		log.Fatal(err)
 	}
 
 	http.HandleFunc("GET /blogs", blog.HandleGetBlogs)

@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetBlogs(page int, limit int, field []string) ([]Blog, error) {
+func GetBlogs(page int, limit int, searchQ string, field []string) ([]Blog, error) {
 	var blogs []Blog
 
 	tx := db.DB.Session(&gorm.Session{})
@@ -19,6 +19,10 @@ func GetBlogs(page int, limit int, field []string) ([]Blog, error) {
 
 	if limit > 0 {
 		tx = tx.Limit(limit)
+	}
+
+	if searchQ != "" {
+		tx = tx.Where("title LIKE ?", searchQ)
 	}
 
 	if len(field) > 0 && field[0] != "" {
