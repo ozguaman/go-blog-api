@@ -51,8 +51,16 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 	}
 	arrOfField := strings.Split(field, ",")
 
+	// sort
+	sortQuery := r.URL.Query().Get("sort")
+	lowerCaseSortQ := strings.ToLower(sortQuery)
+	if _, err := strconv.Atoi(lowerCaseSortQ); err == nil || (lowerCaseSortQ != "" && lowerCaseSortQ != "desc" && lowerCaseSortQ != "asc") {
+		http.Error(w, "Yanlış veya eksik sort parametresi girişi.", http.StatusBadRequest)
+		return
+	}
+
 	// Response
-	blogs, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField)
+	blogs, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField, sortQuery)
 	if err != nil {
 		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
 		return
@@ -83,8 +91,14 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 
 func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	var b Blog
+
 	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
 		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		return
+	}
+
+	if b.Title == "" || b.Content == "" {
+		http.Error(w, "Title ve Content alanları boş olamaz.", http.StatusBadRequest)
 		return
 	}
 
