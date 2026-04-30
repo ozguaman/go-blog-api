@@ -22,7 +22,8 @@ func GetBlogs(page int, limit int, searchQ string, field []string) ([]Blog, erro
 	}
 
 	if searchQ != "" {
-		tx = tx.Where("title LIKE ?", searchQ)
+		query := "%" + searchQ + "%"
+		tx = tx.Where("title ILIKE ? OR content ILIKE ?", query, query)
 	}
 
 	if len(field) > 0 && field[0] != "" {
