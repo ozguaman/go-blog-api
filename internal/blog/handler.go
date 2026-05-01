@@ -121,3 +121,42 @@ func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "başarılı!"})
 }
+
+func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Yanlış formatta ID girişi.", http.StatusBadRequest)
+		return
+	}
+
+	var input Blog
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "Json hatası.", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(input.Title) == "" && strings.TrimSpace(input.Content) == "" {
+		http.Error(w, "Title veya Contentten en az biri dolu olmalı.", http.StatusBadRequest)
+		return
+	}
+
+	UpdatedBlogDatas := Blog{
+		Title:   strings.TrimSpace(input.Title),
+		Content: strings.TrimSpace(input.Content),
+	}
+
+	rowsAffected, err := UpdateBlog(&UpdatedBlogDatas, uint(id))
+	if err != nil {
+		http.Error(w, "Veri güncellenemedi.", http.StatusInternalServerError)
+		return
+	}
+	if rowsAffected == 0 {
+		http.Error(w, "Böyle bir blog bulunmamakta.", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Güncelleme başarıyla tamamlandı."})
+}

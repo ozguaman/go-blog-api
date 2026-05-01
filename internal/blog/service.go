@@ -52,6 +52,11 @@ func GetBlogsById(id int) (Blog, error) {
 	return blog, result.Error
 }
 
-func CreateBlog(b *Blog) error {
-	return db.DB.Create(b).Error
+func CreateBlog(blog *Blog) error {
+	return db.DB.Create(blog).Error
+}
+
+func UpdateBlog(blog *Blog, id uint) (int64, error) {
+	result := db.DB.Model(&Blog{}).Where("id = ?", id).Updates(blog)
+	return result.RowsAffected, result.Error
 }

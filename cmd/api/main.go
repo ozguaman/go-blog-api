@@ -19,6 +19,7 @@ func main() {
 	http.HandleFunc("GET /blogs", blog.HandleGetBlogs)
 	http.HandleFunc("GET /blogs/{id}", blog.HandleGetBlogById)
 	http.HandleFunc("POST /blogs", blog.HandleCreateBlogs)
+	http.HandleFunc("PATCH /blogs/{id}", blog.HandleUpdateBlog)
 
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatal(err)
