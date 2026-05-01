@@ -6,10 +6,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string) ([]Blog, error) {
+func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string) ([]Blog, int64, int64, error) {
 	var blogs []Blog
+	var totalCount, filteredCount int64
 
-	tx := db.DB.Session(&gorm.Session{})
+	tx := db.DB.Session(&gorm.Session{}).Model(&Blog{})
+
+	tx.Count(&totalCount) // getting count of the all blogs
 
 	if page > 0 {
 		pageSize := 10 // i wanted to define this variable myself.
@@ -26,6 +29,8 @@ func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string)
 		tx = tx.Where("title ILIKE ? OR content ILIKE ?", query, query)
 	}
 
+	tx.Count(&filteredCount) // getting count of the filtered blogs
+
 	if len(field) > 0 && field[0] != "" {
 		tx = tx.Select(field)
 	}
@@ -35,7 +40,7 @@ func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string)
 	}
 
 	result := tx.Find(&blogs)
-	return blogs, result.Error
+	return blogs, totalCount, filteredCount, result.Error
 }
 
 func GetBlogsById(id int) (Blog, error) {

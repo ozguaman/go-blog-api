@@ -14,3 +14,9 @@ type Blog struct {
 	Title     string          `json:"title,omitempty"`
 	Content   string          `json:"content,omitempty"`
 }
+
+type BlogResponse struct {
+	TotalCount    int64  `json:"total_count"`
+	FilteredCount int64  `json:"filtered_count"`
+	Response      []Blog `json:"data"`
+}
