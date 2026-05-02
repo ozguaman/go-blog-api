@@ -60,3 +60,10 @@ func UpdateBlog(blog *Blog, id uint) (int64, error) {
 	result := db.DB.Model(&Blog{}).Where("id = ?", id).Updates(blog)
 	return result.RowsAffected, result.Error
 }
+
+func DeleteBlog(id uint) (int64, error) {
+	var blog *Blog
+	// db.DB.Unscoped().Where("id = ?", id).Delete(&Blog{}) -> it does disable soft delete.
+	result := db.DB.Where("id = ?", id).Delete(&blog)
+	return result.RowsAffected, result.Error
+}

@@ -156,7 +156,33 @@ func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println(rowsAffected, " satır etkilendi.")
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Güncelleme başarıyla tamamlandı."})
+}
+
+func HandleDeleteBlog(w http.ResponseWriter, r *http.Request) {
+	idQuery := r.PathValue("id")
+	id, err := strconv.ParseUint(idQuery, 10, 32)
+	if err != nil {
+		http.Error(w, "Yanlış id formatı.", http.StatusBadRequest)
+		return
+	}
+
+	rowsAffected, err := DeleteBlog(uint(id))
+	if err != nil {
+		http.Error(w, "Veri silinirken bir hata oluştu.", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "Böyle bir veri yok.", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Veri başarıyla silindi."})
 }
