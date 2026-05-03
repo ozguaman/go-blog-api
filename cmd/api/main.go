@@ -26,6 +26,7 @@ func main() {
 
 	// auth
 	http.HandleFunc("POST /register", auth.HandleRegister)
+	http.HandleFunc("POST /login", auth.HandleLogin)
 
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatal(err)
