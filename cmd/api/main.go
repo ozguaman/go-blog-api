@@ -4,6 +4,7 @@ import (
 	"demo/internal/auth"
 	"demo/internal/blog"
 	"demo/internal/db"
+	"demo/internal/middleware"
 	"log"
 	"net/http"
 )
@@ -18,11 +19,11 @@ func main() {
 	}
 
 	// blog
-	http.HandleFunc("GET /blogs", blog.HandleGetBlogs)
-	http.HandleFunc("GET /blogs/{id}", blog.HandleGetBlogById)
-	http.HandleFunc("POST /blogs", blog.HandleCreateBlogs)
-	http.HandleFunc("PATCH /blogs/{id}", blog.HandleUpdateBlog)
-	http.HandleFunc("DELETE /blogs/{id}", blog.HandleDeleteBlog)
+	http.HandleFunc("GET /blogs", middleware.AuthMiddleware(blog.HandleGetBlogs))
+	http.HandleFunc("GET /blogs/{id}", middleware.AuthMiddleware(blog.HandleGetBlogById))
+	http.HandleFunc("POST /blogs", middleware.AuthMiddleware(blog.HandleCreateBlogs))
+	http.HandleFunc("PATCH /blogs/{id}", middleware.AuthMiddleware(blog.HandleUpdateBlog))
+	http.HandleFunc("DELETE /blogs/{id}", middleware.AuthMiddleware(blog.HandleDeleteBlog))
 
 	// auth
 	http.HandleFunc("POST /register", auth.HandleRegister)
