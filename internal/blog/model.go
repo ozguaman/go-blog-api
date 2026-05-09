@@ -14,6 +14,7 @@ type Blog struct {
 	DeletedAt *gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	Title     string          `json:"title,omitempty"`
 	Content   string          `json:"content,omitempty"`
+	IsPublic  *bool           `gorm:"default:true" json:"is_public,omitempty"`
 }
 
 type BlogResponse struct {

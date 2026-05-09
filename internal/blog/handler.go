@@ -64,8 +64,11 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// getting the id of the user
+	userID := r.Context().Value("userID").(uint)
+
 	// Response
-	blogs, totalCount, filteredCount, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField, sortQuery)
+	blogs, totalCount, filteredCount, err := GetBlogs(userID, pageNum, limitNum, searchQuery, arrOfField, sortQuery)
 	if err != nil {
 		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
 		log.Println("GORM Hatası:", err)
@@ -84,6 +87,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 
 func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	userID := r.Context().Value("userID").(uint)
 
 	idNum, err := strconv.Atoi(id)
 	if err != nil || idNum < 1 {
@@ -91,7 +95,7 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blog, err := GetBlogsById(idNum)
+	blog, err := GetBlogsById(idNum, userID)
 	if err != nil {
 		http.Error(w, "Böyle bir blog yok.", http.StatusBadRequest)
 		return

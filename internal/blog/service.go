@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string) ([]Blog, int64, int64, error) {
+func GetBlogs(userID uint, page int, limit int, searchQ string, field []string, sortQ string) ([]Blog, int64, int64, error) {
 	var blogs []Blog
 	var totalCount, filteredCount int64
 
@@ -15,7 +15,7 @@ func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string)
 	tx.Count(&totalCount) // getting count of the all blogs
 
 	if page > 0 {
-		pageSize := 10 // i wanted to define this variable myself.
+		pageSize := 10
 		offset := (page - 1) * pageSize
 		tx = tx.Offset(offset).Limit(pageSize)
 	}
@@ -29,8 +29,6 @@ func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string)
 		tx = tx.Where("title ILIKE ? OR content ILIKE ?", query, query)
 	}
 
-	tx.Count(&filteredCount) // getting count of the filtered blogs
-
 	if len(field) > 0 && field[0] != "" {
 		tx = tx.Select(field)
 	}
@@ -39,16 +37,17 @@ func GetBlogs(page int, limit int, searchQ string, field []string, sortQ string)
 		tx = tx.Order("created_at " + sortQ)
 	}
 
-	result := tx.Find(&blogs)
+	result := tx.Where("is_public = ? or author_id = ?", true, userID).Find(&blogs)
+	tx.Count(&filteredCount) // getting count of the filtered blogs
 	return blogs, totalCount, filteredCount, result.Error
 }
 
-func GetBlogsById(id int) (Blog, error) {
+func GetBlogsById(id int, userID uint) (Blog, error) {
 	var blog Blog
 
 	tx := db.DB.Session(&gorm.Session{})
 
-	result := tx.First(&blog, id)
+	result := tx.Where("is_public = ? or author_id = ?", true, userID).First(&blog, id)
 	return blog, result.Error
 }
 
