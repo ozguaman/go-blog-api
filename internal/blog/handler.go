@@ -103,11 +103,15 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 
 func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	var blog Blog
+	// the ID of who created the blog
+	var userID = r.Context().Value("userID").(uint)
 
 	if err := json.NewDecoder(r.Body).Decode(&blog); err != nil {
 		http.Error(w, "JSON hatası.", http.StatusBadRequest)
 		return
 	}
+
+	blog.AuthorID = userID
 
 	if strings.TrimSpace(blog.Title) == "" || strings.TrimSpace(blog.Content) == "" {
 		http.Error(w, "Title ve Content alanları boş olamaz.", http.StatusBadRequest)
@@ -116,6 +120,7 @@ func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 
 	if err := CreateBlog(&blog); err != nil {
 		http.Error(w, "Kaydedilemedi.", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -146,13 +151,16 @@ func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 		Content: strings.TrimSpace(input.Content),
 	}
 
-	rowsAffected, err := UpdateBlog(&UpdatedBlogDatas, uint(id))
+	// the id of the user who tried to update the blog
+	userID := r.Context().Value("userID").(uint)
+
+	rowsAffected, err := UpdateBlog(&UpdatedBlogDatas, uint(id), uint(userID))
 	if err != nil {
 		http.Error(w, "Veri güncellenemedi.", http.StatusInternalServerError)
 		return
 	}
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir blog bulunmamakta.", http.StatusBadRequest)
+		http.Error(w, "Böyle bir blog bulunmamakta veya yetkinizi aşıyor.", http.StatusBadRequest)
 		return
 	}
 
@@ -171,14 +179,17 @@ func HandleDeleteBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rowsAffected, err := DeleteBlog(uint(id))
+	// the id of the user who tried to delete the blog
+	userID := r.Context().Value("userID").(uint)
+
+	rowsAffected, err := DeleteBlog(uint(id), uint(userID))
 	if err != nil {
 		http.Error(w, "Veri silinirken bir hata oluştu.", http.StatusInternalServerError)
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir veri yok.", http.StatusInternalServerError)
+		http.Error(w, "Böyle bir blog yok veya yetkinizi aşıyor.", http.StatusInternalServerError)
 		return
 	}
 

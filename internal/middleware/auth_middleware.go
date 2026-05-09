@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -38,6 +39,14 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		next(w, r)
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			userID := uint(claims["user_id"].(float64))
+
+			ctx := context.WithValue(r.Context(), "userID", userID)
+
+			next(w, r.WithContext(ctx))
+		} else {
+			http.Error(w, "Token bilgileri okunamadı.", http.StatusUnauthorized)
+		}
 	}
 }
