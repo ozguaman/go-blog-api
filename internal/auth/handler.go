@@ -81,13 +81,18 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	var userUpdateRequest UserUpdateRequest
+	var userUpdateRequest User
+	requestID := r.Context().Value("userID").(uint)
+	idParam := r.PathValue("id")
 
-	id := r.PathValue("id")
-
-	idNum, err := strconv.Atoi(id)
+	idNum, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
 		http.Error(w, "Yanlış ID girişi.", http.StatusBadRequest)
+		return
+	}
+
+	if idNum != uint64(requestID) {
+		http.Error(w, "Böyle bir yetkiniz yok.", http.StatusForbidden)
 		return
 	}
 
@@ -96,13 +101,19 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(userUpdateRequest.Password)), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Sunucu kaynaklı bir güvenlik sorunu oluştu.", http.StatusInternalServerError)
+		return
+	}
+
 	user := User{
 		Email:    strings.TrimSpace(userUpdateRequest.Email),
 		Username: strings.TrimSpace(userUpdateRequest.Username),
-		Password: strings.TrimSpace(userUpdateRequest.Password),
+		Password: string(hashedPassword),
 	}
 
-	if err := UpdateUser(idNum, user); err != nil {
+	if err := UpdateUser(uint(idNum), &user); err != nil {
 		http.Error(w, "Kullanıcı bilgileri güncellenemedi.", http.StatusInternalServerError)
 		return
 	}
