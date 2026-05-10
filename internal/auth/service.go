@@ -46,3 +46,8 @@ func CreateToken(userId uint) (string, error) {
 
 	return tokenString, nil
 }
+
+func UpdateUser(idParam int, user *User) error {
+	result := db.DB.Model(&User{}).Where("id = ?", idParam).Updates(&user)
+	return result.Error
+}

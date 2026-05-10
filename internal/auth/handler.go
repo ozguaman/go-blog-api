@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -77,4 +78,36 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(message)
+}
+
+func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	var userUpdateRequest UserUpdateRequest
+
+	id := r.PathValue("id")
+
+	idNum, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "Yanlış ID girişi.", http.StatusBadRequest)
+		return
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&userUpdateRequest); err != nil {
+		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		return
+	}
+
+	user := User{
+		Email:    strings.TrimSpace(userUpdateRequest.Email),
+		Username: strings.TrimSpace(userUpdateRequest.Username),
+		Password: strings.TrimSpace(userUpdateRequest.Password),
+	}
+
+	if err := UpdateUser(idNum, user); err != nil {
+		http.Error(w, "Kullanıcı bilgileri güncellenemedi.", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "İşlem başarılı!"})
 }
