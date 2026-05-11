@@ -28,6 +28,7 @@ func main() {
 	// auth
 	http.HandleFunc("POST /register", auth.HandleRegister)
 	http.HandleFunc("POST /login", auth.HandleLogin)
+	http.HandleFunc("GET /users/{id}/blogs", middleware.AuthMiddleware(auth.HandleGetBlogsByUserID))
 	http.HandleFunc("PATCH /users/{id}", middleware.AuthMiddleware(auth.HandleUpdateUser))
 	http.HandleFunc("DELETE /users/{id}", middleware.AuthMiddleware(auth.HandleDeleteUser))
 

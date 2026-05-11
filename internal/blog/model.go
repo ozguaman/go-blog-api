@@ -19,6 +19,6 @@ type Blog struct {
 
 type BlogResponse struct {
 	TotalCount    int64  `json:"total_count"`
-	FilteredCount int64  `json:"filtered_count"`
+	FilteredCount int64  `json:"filtered_count,omitempty"`
 	Response      []Blog `json:"data"`
 }

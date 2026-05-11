@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"demo/internal/blog"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,6 +82,86 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(message)
 }
 
+func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	idNum, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, "Yanlış ID formatı.", http.StatusBadRequest)
+		return
+	}
+
+	requestID := r.Context().Value("userID").(uint)
+
+	// pagination
+	page := r.URL.Query().Get("page")
+	pageNum := 1
+
+	if page != "" {
+		var err error
+		pageNum, err = strconv.Atoi(page)
+		if err != nil || pageNum <= 0 {
+			http.Error(w, "Page parametresi sorunlu.", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// limit
+	limit := r.URL.Query().Get("limit")
+	limitNum := 0
+
+	if limit != "" {
+		var err error
+		limitNum, err = strconv.Atoi(limit)
+		if err != nil || limitNum < 0 {
+			http.Error(w, "Limit parametresi sorunlu", http.StatusBadRequest)
+			return
+		}
+		if limitNum > 100 {
+			limitNum = 100
+			log.Println(limitNum)
+		}
+	}
+
+	// search
+	searchQuery := r.URL.Query().Get("search")
+	if _, err := strconv.Atoi(searchQuery); err == nil {
+		http.Error(w, "Bozuk formatta search parametresi girişi.", http.StatusBadRequest)
+		return
+	}
+
+	// field
+	field := r.URL.Query().Get("field")
+
+	if _, err := strconv.Atoi(field); err == nil {
+		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
+		return
+	}
+	arrOfField := strings.Split(field, ",")
+
+	// sort
+	sortQuery := r.URL.Query().Get("sort")
+	lowerCaseSortQ := strings.ToLower(sortQuery)
+	if _, err := strconv.Atoi(lowerCaseSortQ); err == nil || (lowerCaseSortQ != "" && lowerCaseSortQ != "desc" && lowerCaseSortQ != "asc") {
+		http.Error(w, "Yanlış veya eksik sort parametresi girişi.", http.StatusBadRequest)
+		return
+	}
+
+	blogs, totalCount, err := GetUserByUserID(uint(idNum), uint(requestID), pageNum, limitNum, searchQuery, arrOfField, sortQuery)
+	if err != nil {
+		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
+		return
+	}
+
+	response := blog.BlogResponse{
+		TotalCount: totalCount,
+		Response:   blogs,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
 func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	var userUpdateRequest User
 	requestID := r.Context().Value("userID").(uint)
@@ -133,7 +215,7 @@ func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	idNum, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
-		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		http.Error(w, "Yanlış ID formatı.", http.StatusBadRequest)
 		return
 	}
 
@@ -154,4 +236,8 @@ func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Böyle bir kullanıcı yok.", http.StatusForbidden)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "İşlem başarılı."})
 }
