@@ -47,7 +47,13 @@ func CreateToken(userId uint) (string, error) {
 	return tokenString, nil
 }
 
-func UpdateUser(idParam uint, user *User) error {
-	result := db.DB.Model(&User{}).Where("id = ?", idParam).Updates(&user).Error
-	return result
+func UpdateUser(idParam uint, user *User) (int64, error) {
+	result := db.DB.Model(&User{}).Where("id = ?", idParam).Updates(&user)
+	return result.RowsAffected, result.Error
+}
+
+func DeleteUser(userID uint64) (int64, error) {
+	var user *User
+	result := db.DB.Where("id = ?", userID).Delete(&user)
+	return result.RowsAffected, result.Error
 }

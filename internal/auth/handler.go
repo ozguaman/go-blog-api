@@ -113,12 +113,45 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		Password: string(hashedPassword),
 	}
 
-	if err := UpdateUser(uint(idNum), &user); err != nil {
+	rowsAffected, err := UpdateUser(uint(idNum), &user)
+	if err != nil {
 		http.Error(w, "Kullanıcı bilgileri güncellenemedi.", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "Böyle bir kullanıcı yok.", http.StatusForbidden)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "İşlem başarılı!"})
+}
+
+func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	idNum, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		return
+	}
+
+	requestID := r.Context().Value("userID").(uint)
+
+	if requestID != uint(idNum) {
+		http.Error(w, "Yetkisiz işlem.", http.StatusUnauthorized)
+		return
+	}
+
+	rowsAffected, err := DeleteUser(idNum)
+	if err != nil {
+		http.Error(w, "Kullanıcı silinemedi.", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "Böyle bir kullanıcı yok.", http.StatusForbidden)
+		return
+	}
 }

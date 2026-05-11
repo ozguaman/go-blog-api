@@ -29,6 +29,7 @@ func main() {
 	http.HandleFunc("POST /register", auth.HandleRegister)
 	http.HandleFunc("POST /login", auth.HandleLogin)
 	http.HandleFunc("PATCH /users/{id}", middleware.AuthMiddleware(auth.HandleUpdateUser))
+	http.HandleFunc("DELETE /users/{id}", middleware.AuthMiddleware(auth.HandleDeleteUser))
 
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatal(err)
