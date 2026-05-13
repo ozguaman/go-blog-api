@@ -89,8 +89,21 @@ func UpdateUser(idParam uint, user *User) (int64, error) {
 }
 
 func DeleteUser(userID uint64) (int64, error) {
-	var user *User
-	// blogları da sildirmen lazım unutma.
-	result := db.DB.Where("id = ?", userID).Delete(&user)
-	return result.RowsAffected, result.Error
+	var rowsAffected int64
+
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+
+		if err := tx.Where("author_id = ?", userID).Delete(&blog.Blog{}); err.Error != nil {
+			return err.Error
+		}
+
+		result := tx.Where("id = ?", userID).Delete(&User{})
+		if result.Error != nil {
+			return result.Error
+		}
+
+		rowsAffected = result.RowsAffected
+		return nil
+	})
+	return rowsAffected, err
 }

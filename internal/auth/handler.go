@@ -226,7 +226,7 @@ func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rowsAffected, err := DeleteUser(idNum)
+	rowsAffected, err := DeleteUser(uint64(idNum))
 	if err != nil {
 		http.Error(w, "Kullanıcı silinemedi.", http.StatusInternalServerError)
 		return
