@@ -53,33 +53,31 @@ func GetUserByUserID(userID uint, requestID uint, page int, limit int, searchQ s
 	var userBlogs []blog.Blog
 	var totalCount int64
 
-	tx := db.DB.Session(&gorm.Session{}).Model(&blog.Blog{})
-
 	if page > 0 {
 		pageSize := 10
 		offset := (page - 1) * pageSize
-		tx = tx.Offset(offset).Limit(pageSize)
+		db.DB = db.DB.Offset(offset).Limit(pageSize)
 	}
 
 	if limit > 0 {
-		tx = tx.Limit(limit)
+		db.DB = db.DB.Limit(limit)
 	}
 
 	if searchQ != "" {
 		query := "%" + searchQ + "%"
-		tx = tx.Where("title ILIKE ? OR content ILIKE ?", query, query)
+		db.DB = db.DB.Where("title ILIKE ? OR content ILIKE ?", query, query)
 	}
 
 	if len(field) > 0 && field[0] != "" {
-		tx = tx.Select(field)
+		db.DB = db.DB.Select(field)
 	}
 
 	if sortQ != "" {
-		tx = tx.Order("created_at " + sortQ)
+		db.DB = db.DB.Order("created_at " + sortQ)
 	}
 
-	result := tx.Where("(author_id = ? AND is_public = ?) OR (author_id = ? and author_id = ?)", userID, true, requestID, userID).Find(&userBlogs)
-	tx.Count(&totalCount)
+	result := db.DB.Where("(author_id = ? AND is_public = ?) OR (author_id = ? and author_id = ?)", userID, true, requestID, userID).Find(&userBlogs)
+	db.DB.Count(&totalCount)
 	return userBlogs, totalCount, result.Error
 }
 

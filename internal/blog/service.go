@@ -2,52 +2,46 @@ package blog
 
 import (
 	"demo/internal/db"
-
-	"gorm.io/gorm"
 )
 
 func GetBlogs(userID uint, page int, limit int, searchQ string, field []string, sortQ string) ([]Blog, int64, int64, error) {
 	var blogs []Blog
 	var totalCount, filteredCount int64
 
-	tx := db.DB.Session(&gorm.Session{}).Model(&Blog{})
-
-	tx.Count(&totalCount) // getting count of the all blogs
+	db.DB.Count(&totalCount) // getting count of the all blogs
 
 	if page > 0 {
 		pageSize := 10
 		offset := (page - 1) * pageSize
-		tx = tx.Offset(offset).Limit(pageSize)
+		db.DB = db.DB.Offset(offset).Limit(pageSize)
 	}
 
 	if limit > 0 {
-		tx = tx.Limit(limit)
+		db.DB = db.DB.Limit(limit)
 	}
 
 	if searchQ != "" {
 		query := "%" + searchQ + "%"
-		tx = tx.Where("title ILIKE ? OR content ILIKE ?", query, query)
+		db.DB = db.DB.Where("title ILIKE ? OR content ILIKE ?", query, query)
 	}
 
 	if len(field) > 0 && field[0] != "" {
-		tx = tx.Select(field)
+		db.DB = db.DB.Select(field)
 	}
 
 	if sortQ != "" {
-		tx = tx.Order("created_at " + sortQ)
+		db.DB = db.DB.Order("created_at " + sortQ)
 	}
 
-	result := tx.Where("is_public = ? or author_id = ?", true, userID).Find(&blogs)
-	tx.Count(&filteredCount) // getting count of the filtered blogs
+	result := db.DB.Where("is_public = ? or author_id = ?", true, userID).Find(&blogs)
+	db.DB.Count(&filteredCount) // getting count of the filtered blogs
 	return blogs, totalCount, filteredCount, result.Error
 }
 
 func GetBlogsById(id int, userID uint) (Blog, error) {
 	var blog Blog
 
-	tx := db.DB.Session(&gorm.Session{})
-
-	result := tx.Where("is_public = ? or author_id = ?", true, userID).First(&blog, id)
+	result := db.DB.Where("is_public = ? or author_id = ?", true, userID).First(&blog, id)
 	return blog, result.Error
 }
 
