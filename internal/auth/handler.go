@@ -16,12 +16,12 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var registerRequest RegisterRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&registerRequest); err != nil {
-		http.Error(w, "JSON hatası.", http.StatusInternalServerError)
+		http.Error(w, "Invalid JSON format.", http.StatusInternalServerError)
 		return
 	}
 
 	if strings.TrimSpace(registerRequest.Email) == "" || strings.TrimSpace(registerRequest.Username) == "" || strings.TrimSpace(registerRequest.Password) == "" {
-		http.Error(w, "Hiçbir alan boş bırakılamaz.", http.StatusBadRequest)
+		http.Error(w, "All fields are required.", http.StatusBadRequest)
 		return
 	}
 
@@ -29,7 +29,7 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(registerRequest.Password)), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Sunucu kaynaklı bir güvenlik sorunu oluştu.", http.StatusInternalServerError)
+		http.Error(w, "Internal security encrpytion error.", http.StatusInternalServerError)
 		return
 	}
 
@@ -40,7 +40,11 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := Register(&user); err != nil {
-		http.Error(w, "Kullanıcı kaydı aşamasında bir sorun oluştu.", http.StatusInternalServerError)
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			http.Error(w, "Username or email already exists.", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to register user.", http.StatusInternalServerError)
 		return
 	}
 
@@ -53,13 +57,13 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var loginRequest LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
-		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON format.", http.StatusBadRequest)
 		return
 	}
 
 	user, err := FindUserByUsername(loginRequest)
 	if err != nil {
-		http.Error(w, "Kullanıcı adı veya şifre yanlış.", http.StatusUnauthorized)
+		http.Error(w, "Invalid username or password.", http.StatusUnauthorized)
 		return
 	}
 
@@ -67,14 +71,14 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		http.Error(w, "Kullanıcı adı veya şifre yanlış.", http.StatusUnauthorized)
+		http.Error(w, "Invalid username or password.", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := CreateToken(user.ID)
 
 	message := map[string]string{
-		"message": "Giriş başarılı.",
+		"message": "Login successful.",
 		"token":   token,
 	}
 
@@ -87,7 +91,7 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	idNum, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
-		http.Error(w, "Yanlış ID formatı.", http.StatusBadRequest)
+		http.Error(w, "Invalid user ID format.", http.StatusBadRequest)
 		return
 	}
 
@@ -104,7 +108,7 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 		var err error
 		pageNum, err = strconv.Atoi(page)
 		if err != nil || pageNum <= 0 {
-			http.Error(w, "Page parametresi sorunlu.", http.StatusBadRequest)
+			http.Error(w, "Invalid page parameter.", http.StatusBadRequest)
 			return
 		}
 	}
@@ -117,7 +121,7 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 		var err error
 		limitNum, err = strconv.Atoi(limit)
 		if err != nil || limitNum < 0 {
-			http.Error(w, "Limit parametresi sorunlu", http.StatusBadRequest)
+			http.Error(w, "Invalid limit parameter.", http.StatusBadRequest)
 			return
 		}
 		if limitNum > 100 {
@@ -128,16 +132,12 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 
 	// search
 	searchQuery := r.URL.Query().Get("search")
-	if _, err := strconv.Atoi(searchQuery); err == nil {
-		http.Error(w, "Bozuk formatta search parametresi girişi.", http.StatusBadRequest)
-		return
-	}
 
 	// field
 	field := r.URL.Query().Get("field")
 
 	if _, err := strconv.Atoi(field); err == nil {
-		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid field query format.", http.StatusBadRequest)
 		return
 	}
 	arrOfField := strings.Split(field, ",")
@@ -146,13 +146,13 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 	sortQuery := r.URL.Query().Get("sort")
 	lowerCaseSortQ := strings.ToLower(sortQuery)
 	if _, err := strconv.Atoi(lowerCaseSortQ); err == nil || (lowerCaseSortQ != "" && lowerCaseSortQ != "desc" && lowerCaseSortQ != "asc") {
-		http.Error(w, "Yanlış veya eksik sort parametresi girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid sort parameter. Use 'asc' or 'desc'.", http.StatusBadRequest)
 		return
 	}
 
 	blogs, totalCount, err := GetUserByUserID(uint(idNum), uint(requestID), pageNum, limitNum, searchQuery, arrOfField, sortQuery)
 	if err != nil {
-		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch user blogs.", http.StatusInternalServerError)
 		return
 	}
 
@@ -172,19 +172,29 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	idNum, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		http.Error(w, "Yanlış ID girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid user ID format.", http.StatusBadRequest)
 		return
 	}
 
-	requestID := r.Context().Value(middleware.UserIDKey).(uint)
+	ctxID := r.Context().Value(middleware.UserIDKey)
+	if ctxID == nil {
+		http.Error(w, "Unauthorized: Token missing.", http.StatusUnauthorized)
+		return
+	}
+
+	requestID, ok := ctxID.(uint)
+	if !ok {
+		http.Error(w, "Internal context identity error.", http.StatusInternalServerError)
+		return
+	}
 
 	if idNum != uint64(requestID) {
-		http.Error(w, "Böyle bir yetkiniz yok.", http.StatusForbidden)
+		http.Error(w, "Forbidden: You cannot update anoter user's profile.", http.StatusForbidden)
 		return
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&userUpdateRequest); err != nil {
-		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON format.", http.StatusBadRequest)
 		return
 	}
 
@@ -196,7 +206,7 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(userUpdateRequest.Password) != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(userUpdateRequest.Password)), bcrypt.DefaultCost)
 		if err != nil {
-			http.Error(w, "Sunucu kaynaklı bir güvenlik sorunu oluştu.", http.StatusInternalServerError)
+			http.Error(w, "Internal security encryption error", http.StatusInternalServerError)
 			return
 		}
 		user.Password = string(hashedPassword)
@@ -204,47 +214,58 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	rowsAffected, err := UpdateUser(uint(idNum), &user)
 	if err != nil {
-		http.Error(w, "Kullanıcı bilgileri güncellenemedi.", http.StatusInternalServerError)
+		http.Error(w, "Failed to update user's profile.", http.StatusInternalServerError)
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir kullanıcı yok.", http.StatusForbidden)
+		http.Error(w, "User not found.", http.StatusForbidden)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "İşlem başarılı!"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "User profile updated successfully"})
 }
 
 func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	idNum, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
-		http.Error(w, "Yanlış ID formatı.", http.StatusBadRequest)
+		http.Error(w, "Invalid user ID format.", http.StatusBadRequest)
 		return
 	}
 
-	requestID := r.Context().Value(middleware.UserIDKey).(uint)
+	ctxID := r.Context().Value(middleware.UserIDKey)
+
+	if ctxID == nil {
+		http.Error(w, "Unauthorized: Token missing.", http.StatusUnauthorized)
+		return
+	}
+
+	requestID, ok := ctxID.(uint)
+	if !ok {
+		http.Error(w, "Internal context identity error.", http.StatusInternalServerError)
+		return
+	}
 
 	if requestID != uint(idNum) {
-		http.Error(w, "Yetkisiz işlem.", http.StatusUnauthorized)
+		http.Error(w, "Forbidden: You cannot delete another user's account.", http.StatusForbidden)
 		return
 	}
 
 	rowsAffected, err := DeleteUser(uint64(idNum))
 	if err != nil {
-		http.Error(w, "Kullanıcı silinemedi.", http.StatusInternalServerError)
+		http.Error(w, "Failed to delete user's account.", http.StatusInternalServerError)
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir kullanıcı yok.", http.StatusForbidden)
+		http.Error(w, "User not found.", http.StatusForbidden)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "İşlem başarılı."})
+	json.NewEncoder(w).Encode(map[string]string{"message": "User account deleted succesfully"})
 }

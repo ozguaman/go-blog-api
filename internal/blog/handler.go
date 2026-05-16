@@ -19,7 +19,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		var err error
 		pageNum, err = strconv.Atoi(page)
 		if err != nil || pageNum <= 0 {
-			http.Error(w, "Page parametresi sorunlu.", http.StatusBadRequest)
+			http.Error(w, "Invalid page parameter.", http.StatusBadRequest)
 			return
 		}
 	}
@@ -32,7 +32,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		var err error
 		limitNum, err = strconv.Atoi(limit)
 		if err != nil || limitNum < 0 {
-			http.Error(w, "Limit parametresi sorunlu", http.StatusBadRequest)
+			http.Error(w, "Invalid limit parameter.", http.StatusBadRequest)
 			return
 		}
 		if limitNum > 100 {
@@ -48,7 +48,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 	field := r.URL.Query().Get("field")
 
 	if _, err := strconv.Atoi(field); err == nil {
-		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid field parameter.", http.StatusBadRequest)
 		return
 	}
 
@@ -58,15 +58,14 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 	sortQuery := r.URL.Query().Get("sort")
 	lowerCaseSortQ := strings.ToLower(sortQuery)
 	if _, err := strconv.Atoi(lowerCaseSortQ); err == nil || (lowerCaseSortQ != "" && lowerCaseSortQ != "desc" && lowerCaseSortQ != "asc") {
-		http.Error(w, "Yanlış veya eksik sort parametresi girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid sort parameter. Use 'asc' or 'desc'.", http.StatusBadRequest)
 		return
 	}
 
 	// Response
 	blogs, totalCount, filteredCount, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField, sortQuery)
 	if err != nil {
-		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
-		log.Println("GORM Hatası:", err)
+		http.Error(w, "Failet to fetch blogs.", http.StatusInternalServerError)
 		return
 	}
 
@@ -85,7 +84,7 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 
 	idNum, err := strconv.Atoi(id)
 	if err != nil || idNum < 1 {
-		http.Error(w, "Yanlış ID formatı..", http.StatusBadRequest)
+		http.Error(w, "Invalid blog ID format.", http.StatusBadRequest)
 		return
 	}
 
@@ -98,7 +97,7 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 
 	blog, err := GetBlogsById(idNum, userID)
 	if err != nil {
-		http.Error(w, "Böyle bir blog yok.", http.StatusBadRequest)
+		http.Error(w, "Blog not found.", http.StatusNotFound)
 		log.Println(err)
 		return
 	}
@@ -110,45 +109,54 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	var blog Blog
 	// the ID of who created the blog
-	var userID = r.Context().Value(middleware.UserIDKey).(uint)
+	ctxID := r.Context().Value(middleware.UserIDKey)
+	if ctxID == nil {
+		http.Error(w, "Unauthorized: Token missing.", http.StatusUnauthorized)
+		return
+	}
+	userID, ok := ctxID.(uint)
+	if !ok {
+		http.Error(w, "Internal context identity error.", http.StatusInternalServerError)
+		return
+	}
 
 	if err := json.NewDecoder(r.Body).Decode(&blog); err != nil {
-		http.Error(w, "JSON hatası.", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON format.", http.StatusBadRequest)
 		return
 	}
 
 	blog.AuthorID = userID
 
 	if strings.TrimSpace(blog.Title) == "" || strings.TrimSpace(blog.Content) == "" {
-		http.Error(w, "Title ve Content alanları boş olamaz.", http.StatusBadRequest)
+		http.Error(w, "Title and content fields are required.", http.StatusBadRequest)
 		return
 	}
 
 	if err := CreateBlog(&blog); err != nil {
-		http.Error(w, "Kaydedilemedi.", http.StatusInternalServerError)
+		http.Error(w, "Failed to create blog post.", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "başarılı!"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Blog post created successfully."})
 }
 
 func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		http.Error(w, "Yanlış formatta ID girişi.", http.StatusBadRequest)
+		http.Error(w, "Invalid blog ID format.", http.StatusBadRequest)
 		return
 	}
 
 	var input Blog
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Json hatası.", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON format.", http.StatusBadRequest)
 		return
 	}
 
 	if strings.TrimSpace(input.Title) == "" && strings.TrimSpace(input.Content) == "" && input.IsPublic == nil {
-		http.Error(w, "Boş istek gönderilemez.", http.StatusBadRequest)
+		http.Error(w, "Update body cannot be empty.", http.StatusBadRequest)
 		return
 	}
 
@@ -159,48 +167,66 @@ func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// the id of the user who tried to update the blog
-	userID := r.Context().Value(middleware.UserIDKey).(uint)
+	ctxID := r.Context().Value(middleware.UserIDKey)
+	if ctxID == nil {
+		http.Error(w, "Unauthorized: Token missing.", http.StatusUnauthorized)
+		return
+	}
+	userID, ok := ctxID.(uint)
+	if !ok {
+		http.Error(w, "Internal context identity error.", http.StatusInternalServerError)
+		return
+	}
 
 	rowsAffected, err := UpdateBlog(&UpdatedBlogDatas, uint(id), uint(userID))
 	if err != nil {
-		http.Error(w, "Veri güncellenemedi.", http.StatusInternalServerError)
+		http.Error(w, "Failed to update blog post.", http.StatusInternalServerError)
 		return
 	}
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir blog bulunmamakta veya yetkinizi aşıyor.", http.StatusBadRequest)
+		http.Error(w, "Blog not found or action forbidden.", http.StatusForbidden)
 		return
 	}
 
-	log.Println(rowsAffected, " satır etkilendi.")
+	log.Println(rowsAffected, "rows affected.")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Güncelleme başarıyla tamamlandı."})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Blog post updated successfully."})
 }
 
 func HandleDeleteBlog(w http.ResponseWriter, r *http.Request) {
 	idQuery := r.PathValue("id")
 	id, err := strconv.ParseUint(idQuery, 10, 32)
 	if err != nil {
-		http.Error(w, "Yanlış id formatı.", http.StatusBadRequest)
+		http.Error(w, "Invalid blog ID format.", http.StatusBadRequest)
 		return
 	}
 
 	// the id of the user who tried to delete the blog
-	userID := r.Context().Value(middleware.UserIDKey).(uint)
+	ctxID := r.Context().Value(middleware.UserIDKey)
+	if ctxID == nil {
+		http.Error(w, "Unauthorized: Token missing.", http.StatusUnauthorized)
+		return
+	}
+	userID, ok := ctxID.(uint)
+	if !ok {
+		http.Error(w, "Internal context identity error.", http.StatusInternalServerError)
+		return
+	}
 
 	rowsAffected, err := DeleteBlog(uint(id), uint(userID))
 	if err != nil {
-		http.Error(w, "Veri silinirken bir hata oluştu.", http.StatusInternalServerError)
+		http.Error(w, "Failed to delete blog post.", http.StatusInternalServerError)
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(w, "Böyle bir blog yok veya yetkinizi aşıyor.", http.StatusInternalServerError)
+		http.Error(w, "Blog not found or action forbidden.", http.StatusForbidden)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Veri başarıyla silindi."})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Blog post deleted successfully."})
 }
