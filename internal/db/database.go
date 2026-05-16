@@ -16,7 +16,7 @@ func Connect() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Bilgi: .env dosyası bulunamadı, sistem ortam değişkenleri kullanılacak.")
+		log.Println("env file not found.")
 	}
 
 	host := os.Getenv("DB_HOST")
@@ -28,12 +28,14 @@ func Connect() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		host, user, password, dbname, port)
 
+	log.Printf("Connecting to database with host=%s user=%s dbname=%s port=%s", host, user, dbname, port)
+
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Successfully connected to database.")
+	log.Println("Database connection successfully established via Docker Network.")
 	DB = database
 }

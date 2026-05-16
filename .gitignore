@@ -4,6 +4,8 @@
 *.so
 *.dylib
 bin/
+dist/
+vegnor/
 
 *.log
 .env

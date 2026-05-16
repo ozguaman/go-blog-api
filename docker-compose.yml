@@ -1,0 +1,38 @@
+services:
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: demo_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - demo_network
+
+  go_server:
+    build: .
+    container_name: demo_api
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    depends_on:
+      - postgres_db
+    networks:
+      - demo_network
+
+volumes:
+  postgres_data:
+
+networks:
+  demo_network:
+    driver: bridge
