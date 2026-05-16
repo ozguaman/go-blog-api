@@ -2,6 +2,7 @@ package auth
 
 import (
 	"demo/internal/blog"
+	"demo/internal/middleware"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -90,7 +91,10 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	requestID := r.Context().Value("userID").(uint)
+	var requestID uint
+	if ctxID := r.Context().Value(middleware.UserIDKey); ctxID != nil {
+		requestID = ctxID.(uint)
+	}
 
 	// pagination
 	page := r.URL.Query().Get("page")
@@ -164,7 +168,6 @@ func HandleGetBlogsByUserID(w http.ResponseWriter, r *http.Request) {
 
 func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	var userUpdateRequest User
-	requestID := r.Context().Value("userID").(uint)
 	idParam := r.PathValue("id")
 
 	idNum, err := strconv.ParseUint(idParam, 10, 32)
@@ -172,6 +175,8 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Yanlış ID girişi.", http.StatusBadRequest)
 		return
 	}
+
+	requestID := r.Context().Value(middleware.UserIDKey).(uint)
 
 	if idNum != uint64(requestID) {
 		http.Error(w, "Böyle bir yetkiniz yok.", http.StatusForbidden)
@@ -183,16 +188,18 @@ func HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(userUpdateRequest.Password)), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "Sunucu kaynaklı bir güvenlik sorunu oluştu.", http.StatusInternalServerError)
-		return
-	}
-
 	user := User{
 		Email:    strings.TrimSpace(userUpdateRequest.Email),
 		Username: strings.TrimSpace(userUpdateRequest.Username),
-		Password: string(hashedPassword),
+	}
+
+	if strings.TrimSpace(userUpdateRequest.Password) != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(userUpdateRequest.Password)), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, "Sunucu kaynaklı bir güvenlik sorunu oluştu.", http.StatusInternalServerError)
+			return
+		}
+		user.Password = string(hashedPassword)
 	}
 
 	rowsAffected, err := UpdateUser(uint(idNum), &user)
@@ -219,7 +226,7 @@ func HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	requestID := r.Context().Value("userID").(uint)
+	requestID := r.Context().Value(middleware.UserIDKey).(uint)
 
 	if requestID != uint(idNum) {
 		http.Error(w, "Yetkisiz işlem.", http.StatusUnauthorized)

@@ -3,32 +3,27 @@ package auth
 import (
 	"demo/internal/blog"
 	"demo/internal/db"
-	"log"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
 func Register(user *User) error {
-	return db.DB.Create(user).Error
+	baseQuery := db.DB.Model(&User{})
+	return baseQuery.Create(user).Error
 }
 
 func FindUserByUsername(loginRequest LoginRequest) (User, error) {
 	var user User
-	result := db.DB.Where("username = ?", strings.TrimSpace(loginRequest.Username)).First(&user)
+	baseQuery := db.DB.Model(&User{})
+	result := baseQuery.Where("username = ?", strings.TrimSpace(loginRequest.Username)).First(&user)
 	return user, result.Error
 }
 
 func CreateToken(userId uint) (string, error) {
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(".env dosyası yüklenemedi!")
-	}
 
 	ENV_JWT := os.Getenv("JWT_SECRET_KEY")
 	JWT_SECRET_KEY := []byte(ENV_JWT)
@@ -53,36 +48,40 @@ func GetUserByUserID(userID uint, requestID uint, page int, limit int, searchQ s
 	var userBlogs []blog.Blog
 	var totalCount int64
 
-	if page > 0 {
-		pageSize := 10
-		offset := (page - 1) * pageSize
-		db.DB = db.DB.Offset(offset).Limit(pageSize)
-	}
+	baseQuery := db.DB.Model(&blog.Blog{})
 
-	if limit > 0 {
-		db.DB = db.DB.Limit(limit)
-	}
+	baseQuery.Where("(author_id = ? AND is_public = ?) OR (author_id = ? AND author_id = ?)", userID, true, requestID, userID).Count(&totalCount)
 
 	if searchQ != "" {
 		query := "%" + searchQ + "%"
-		db.DB = db.DB.Where("title ILIKE ? OR content ILIKE ?", query, query)
+		baseQuery = baseQuery.Where("title ILIKE ? OR content ILIKE ?", query, query)
+	}
+
+	if page > 0 {
+		pageSize := 10
+		offset := (page - 1) * pageSize
+		baseQuery = baseQuery.Offset(offset).Limit(pageSize)
+	}
+
+	if limit > 0 {
+		baseQuery = baseQuery.Limit(limit)
 	}
 
 	if len(field) > 0 && field[0] != "" {
-		db.DB = db.DB.Select(field)
+		baseQuery = baseQuery.Select(field)
 	}
 
 	if sortQ != "" {
-		db.DB = db.DB.Order("created_at " + sortQ)
+		baseQuery = baseQuery.Order("created_at " + sortQ)
 	}
 
-	result := db.DB.Where("(author_id = ? AND is_public = ?) OR (author_id = ? and author_id = ?)", userID, true, requestID, userID).Find(&userBlogs)
-	db.DB.Count(&totalCount)
+	result := baseQuery.Where("(author_id = ? AND is_public = ?) OR (author_id = ?)", userID, true, requestID).Find(&userBlogs)
 	return userBlogs, totalCount, result.Error
 }
 
 func UpdateUser(idParam uint, user *User) (int64, error) {
-	result := db.DB.Model(&User{}).Where("id = ?", idParam).Updates(&user)
+	baseQuery := db.DB.Model(&User{})
+	result := baseQuery.Model(&User{}).Where("id = ?", idParam).Updates(&user)
 	return result.RowsAffected, result.Error
 }
 
@@ -91,8 +90,9 @@ func DeleteUser(userID uint64) (int64, error) {
 
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
 
-		if err := tx.Where("author_id = ?", userID).Delete(&blog.Blog{}); err.Error != nil {
-			return err.Error
+		blogResult := tx.Where("author_id = ?", uint(userID)).Delete(&blog.Blog{})
+		if blogResult.Error != nil {
+			return blogResult.Error
 		}
 
 		result := tx.Where("id = ?", userID).Delete(&User{})

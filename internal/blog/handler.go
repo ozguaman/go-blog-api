@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"demo/internal/middleware"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -42,10 +43,6 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 
 	// search
 	searchQuery := r.URL.Query().Get("search")
-	if _, err := strconv.Atoi(searchQuery); err == nil {
-		http.Error(w, "Bozuk formatta search parametresi girişi.", http.StatusBadRequest)
-		return
-	}
 
 	// field
 	field := r.URL.Query().Get("field")
@@ -54,6 +51,7 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bozuk formatta field girişi.", http.StatusBadRequest)
 		return
 	}
+
 	arrOfField := strings.Split(field, ",")
 
 	// sort
@@ -64,11 +62,8 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// getting the id of the user
-	userID := r.Context().Value("userID").(uint)
-
 	// Response
-	blogs, totalCount, filteredCount, err := GetBlogs(userID, pageNum, limitNum, searchQuery, arrOfField, sortQuery)
+	blogs, totalCount, filteredCount, err := GetBlogs(pageNum, limitNum, searchQuery, arrOfField, sortQuery)
 	if err != nil {
 		http.Error(w, "Veriler çekilemedi.", http.StatusInternalServerError)
 		log.Println("GORM Hatası:", err)
@@ -87,7 +82,6 @@ func HandleGetBlogs(w http.ResponseWriter, r *http.Request) {
 
 func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	userID := r.Context().Value("userID").(uint)
 
 	idNum, err := strconv.Atoi(id)
 	if err != nil || idNum < 1 {
@@ -95,9 +89,17 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIDVal := r.Context().Value(middleware.UserIDKey)
+	var userID uint = 0
+
+	if userIDVal != nil {
+		userID = userIDVal.(uint)
+	}
+
 	blog, err := GetBlogsById(idNum, userID)
 	if err != nil {
 		http.Error(w, "Böyle bir blog yok.", http.StatusBadRequest)
+		log.Println(err)
 		return
 	}
 
@@ -108,7 +110,7 @@ func HandleGetBlogById(w http.ResponseWriter, r *http.Request) {
 func HandleCreateBlogs(w http.ResponseWriter, r *http.Request) {
 	var blog Blog
 	// the ID of who created the blog
-	var userID = r.Context().Value("userID").(uint)
+	var userID = r.Context().Value(middleware.UserIDKey).(uint)
 
 	if err := json.NewDecoder(r.Body).Decode(&blog); err != nil {
 		http.Error(w, "JSON hatası.", http.StatusBadRequest)
@@ -145,18 +147,19 @@ func HandleUpdateBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(input.Title) == "" && strings.TrimSpace(input.Content) == "" {
-		http.Error(w, "Title veya Contentten en az biri dolu olmalı.", http.StatusBadRequest)
+	if strings.TrimSpace(input.Title) == "" && strings.TrimSpace(input.Content) == "" && input.IsPublic == nil {
+		http.Error(w, "Boş istek gönderilemez.", http.StatusBadRequest)
 		return
 	}
 
 	UpdatedBlogDatas := Blog{
-		Title:   strings.TrimSpace(input.Title),
-		Content: strings.TrimSpace(input.Content),
+		Title:    strings.TrimSpace(input.Title),
+		Content:  strings.TrimSpace(input.Content),
+		IsPublic: input.IsPublic,
 	}
 
 	// the id of the user who tried to update the blog
-	userID := r.Context().Value("userID").(uint)
+	userID := r.Context().Value(middleware.UserIDKey).(uint)
 
 	rowsAffected, err := UpdateBlog(&UpdatedBlogDatas, uint(id), uint(userID))
 	if err != nil {
@@ -184,7 +187,7 @@ func HandleDeleteBlog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// the id of the user who tried to delete the blog
-	userID := r.Context().Value("userID").(uint)
+	userID := r.Context().Value(middleware.UserIDKey).(uint)
 
 	rowsAffected, err := DeleteBlog(uint(id), uint(userID))
 	if err != nil {

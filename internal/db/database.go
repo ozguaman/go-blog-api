@@ -16,7 +16,7 @@ func Connect() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(".env dosyası yüklenemedi!")
+		log.Println("Bilgi: .env dosyası bulunamadı, sistem ortam değişkenleri kullanılacak.")
 	}
 
 	host := os.Getenv("DB_HOST")

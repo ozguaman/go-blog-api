@@ -19,8 +19,8 @@ func main() {
 	}
 
 	// blog
-	http.HandleFunc("GET /blogs", middleware.AuthMiddleware(blog.HandleGetBlogs))
-	http.HandleFunc("GET /blogs/{id}", middleware.AuthMiddleware(blog.HandleGetBlogById))
+	http.HandleFunc("GET /blogs", blog.HandleGetBlogs)
+	http.HandleFunc("GET /blogs/{id}", middleware.AuthOptionalMiddleware(blog.HandleGetBlogById))
 	http.HandleFunc("POST /blogs", middleware.AuthMiddleware(blog.HandleCreateBlogs))
 	http.HandleFunc("PATCH /blogs/{id}", middleware.AuthMiddleware(blog.HandleUpdateBlog))
 	http.HandleFunc("DELETE /blogs/{id}", middleware.AuthMiddleware(blog.HandleDeleteBlog))
@@ -28,7 +28,7 @@ func main() {
 	// auth
 	http.HandleFunc("POST /register", auth.HandleRegister)
 	http.HandleFunc("POST /login", auth.HandleLogin)
-	http.HandleFunc("GET /users/{id}/blogs", middleware.AuthMiddleware(auth.HandleGetBlogsByUserID))
+	http.HandleFunc("GET /users/{id}/blogs", middleware.AuthOptionalMiddleware(auth.HandleGetBlogsByUserID))
 	http.HandleFunc("PATCH /users/{id}", middleware.AuthMiddleware(auth.HandleUpdateUser))
 	http.HandleFunc("DELETE /users/{id}", middleware.AuthMiddleware(auth.HandleDeleteUser))
 
