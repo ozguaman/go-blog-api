@@ -31,7 +31,7 @@ You just need to have `Docker Desktop` installed and running on your computer. `
 
 ### 2. Clone the repository
 ````bash
-git clone https://github.com/ozguaman/https://github.com/ozguaman/go-blog-api
+git clone https://github.com/ozguaman/go-blog-api
 cd go-blog-api
 ````
 
