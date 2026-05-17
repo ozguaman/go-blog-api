@@ -29,7 +29,13 @@ I also containerized the whole app using Docker Compose so it runs anywhere with
 ### 1. Requirements
 You just need to have `Docker Desktop` installed and running on your computer. `No need to install Go` locally if you use Docker, as the Go runtime comes built-in with the container.
 
-### 2. Setup Env Variables
+### 2. Clone the repository
+````bash
+git clone [https://github.com/ozguaman/https://github.com/ozguaman/go-blog-api](https://github.com/ozguaman/https://github.com/ozguaman/go-blog-api)
+cd go-blog-api
+````
+
+### 3. Setup Env Variables
 Create a file named `.env` in the root folder and add your local configs:
 
 ````env
@@ -41,7 +47,7 @@ DB_NAME=demodb
 JWT_SECRET_KEY=my_local_secret_key
 ````
 
-### 3. Start everyting
+### 4. Start everyting
 Open your terminal in the project and run this command:
 
 ````bash
